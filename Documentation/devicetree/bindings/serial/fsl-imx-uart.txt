@@ -14,6 +14,8 @@ Optional properties:
   properties. In case you use "uart-has-rtscts" the signal that controls
   the transceiver is actually CTS_B, not RTS_B. CTS_B is always output,
   and RTS_B is input, regardless of dte-mode.
+- fsl,rs485-de-gpio: Use GPIO to enable the rs485 transceiver. Use if your
+                      board layout has rts/cts lines swapped
 
 Please check Documentation/devicetree/bindings/serial/serial.txt
 for the complete list of generic properties.
@@ -33,4 +35,5 @@ uart1: serial@73fbc000 {
 	interrupts = <31>;
 	uart-has-rtscts;
 	fsl,dte-mode;
+    fsl,rs485-de-gpio = <&gpio5 8 GPIO_ACTIVE_HIGH>;
 };

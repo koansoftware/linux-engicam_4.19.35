@@ -29,10 +29,12 @@
 #include <linux/slab.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
 
+#include <linux/gpio.h>
 #include <asm/irq.h>
 #include <linux/busfreq-imx.h>
 #include <linux/pm_qos.h>
@@ -206,6 +208,7 @@ struct imx_port {
 	struct clk		*clk_ipg;
 	struct clk		*clk_per;
 	const struct imx_uart_data *devdata;
+	int			rs485_de_gpio;
 
 	struct mctrl_gpios *gpios;
 
@@ -389,12 +392,37 @@ static void imx_uart_ucrs_restore(struct imx_port *sport,
 }
 #endif
 
+/*
+* Enable the transmitter of the rs485 transceiver
+*/
+static void rs485_de_ctrl(struct imx_port *sport, bool enable)
+{
+	unsigned long temp;
+
+	/*
+	 * SER_RS485_RTS_ON_SEND / SER_RS485_RTS_AFTER_SEND
+	 * define active high/low levels, they are exclusive
+	 */
+	if (sport->port.rs485.flags & SER_RS485_RTS_AFTER_SEND)
+		enable = !enable;
+
+	if (gpio_is_valid(sport->rs485_de_gpio)) {
+		gpio_set_value(sport->rs485_de_gpio, enable);
+	} else {
+		temp = readl(sport->port.membase + UCR2);
+		if (enable)
+			temp &= ~UCR2_CTS; /* active low */
+		else
+			temp |= UCR2_CTS;
+		writel(temp, sport->port.membase + UCR2);
+	}
+}
+
 static void imx_uart_rts_active(struct imx_port *sport, u32 *ucr2)
 {
 	*ucr2 &= ~(UCR2_CTSC | UCR2_CTS);
 
-	sport->port.mctrl |= TIOCM_RTS;
-	mctrl_gpio_set(sport->gpios, sport->port.mctrl);
+	rs485_de_ctrl(sport, true);
 }
 
 static void imx_uart_rts_inactive(struct imx_port *sport, u32 *ucr2)
@@ -402,8 +430,7 @@ static void imx_uart_rts_inactive(struct imx_port *sport, u32 *ucr2)
 	*ucr2 &= ~UCR2_CTSC;
 	*ucr2 |= UCR2_CTS;
 
-	sport->port.mctrl &= ~TIOCM_RTS;
-	mctrl_gpio_set(sport->gpios, sport->port.mctrl);
+	rs485_de_ctrl(sport, false);
 }
 
 static void imx_uart_rts_auto(struct imx_port *sport, u32 *ucr2)
@@ -2198,6 +2225,19 @@ static int imx_uart_probe_dt(struct imx_port *sport,
 
 	if (of_get_property(np, "rts-gpios", NULL))
 		sport->have_rtsgpio = 1;
+
+	sport->rs485_de_gpio = of_get_named_gpio(np, "fsl,rs485-de-gpio", 0);
+	if (gpio_is_valid(sport->rs485_de_gpio)) {
+		ret = devm_gpio_request_one(&pdev->dev, sport->rs485_de_gpio, GPIOF_DIR_OUT, "GPIO_CTS");
+		printk("valid GPIO\n");
+		if (ret)
+			return ret;
+	}
+	else
+	{
+		printk("[DA] invalid gpio\n");
+		sport->rs485_de_gpio=-1;
+	}
 
 	return 0;
 }
