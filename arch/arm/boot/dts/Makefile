@@ -620,6 +620,7 @@ dtb-$(CONFIG_SOC_IMX6UL) += \
 	imx6ul-14x14-evk-usb-certi.dtb \
 	microgea-mx6ull.dtb \
 	microgea-mx6ull-of10.dtb \
+	microgea-mx6ull-y1.dtb \
 	imx6ul-geam.dtb \
 	imx6ul-isiot-emmc.dtb \
 	imx6ul-isiot-nand.dtb \
