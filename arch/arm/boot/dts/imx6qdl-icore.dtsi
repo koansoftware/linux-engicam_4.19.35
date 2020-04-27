@@ -254,7 +254,7 @@
 &gpmi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_gpmi_nand>;
-	status = "okay"; 
+	status = "disabled"; 
 	fsl,legacy-bch-geometry;
 	nand-on-flash-bbt;
 };
@@ -599,7 +599,7 @@
 &uart3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
-   	fsl,uart-has-rtscts;
+  fsl,uart-has-rtscts;
 	status = "okay";
 };
 
